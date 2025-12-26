@@ -67,6 +67,10 @@ def train_loop(model, dataloader, optimizer, criterion, device):
         loss.backward() # backpropagation
         optimizer.step() # update weights
 
+        preds = outputs.argmax(dim=1) # get predicted class
+        correct += (preds == labels).sum().item()
+        total += labels.size(0)
+
     return total_loss / len(dataloader), correct / total
 
 # Test Loop:
