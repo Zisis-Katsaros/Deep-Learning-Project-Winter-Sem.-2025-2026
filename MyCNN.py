@@ -3,7 +3,8 @@ import torch
 from torch import nn
 
 class MyCNN(nn.Module):
-    def __init__(self, img_size, num_of_channels, num_of_filters, num_of_blocks, num_of_classes):
+    def __init__(self, img_size, num_of_channels, num_of_filters, num_of_blocks, num_of_classes, batch_norm=False, 
+                 layer_norm=False, dropout_prob=0.0):
         super(MyCNN, self).__init__()
 
         self.blocks = nn.ModuleList() # list to hold convolutional blocks
@@ -11,12 +12,14 @@ class MyCNN(nn.Module):
         in_channels = num_of_channels # initial input channel size = number of image channels
         out_channels = num_of_filters # initial output channel size = number of filters
 
-        # Convolutional Blocks: Conv2d -> ReLU -> MaxPool2d
+        # Convolutional Blocks: Conv2d -> (BatchNorm) -> ReLU -> MaxPool2d -> (LayerNorm)
         for i in range(num_of_blocks):
             self.blocks.append(nn.Sequential(
                 nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1),
+                nn.BatchNorm2d(out_channels) if batch_norm else nn.Identity(),
                 nn.ReLU(),
-                nn.MaxPool2d(kernel_size=2)
+                nn.MaxPool2d(kernel_size=2),
+                nn.LayerNorm([out_channels, img_size // (2 ** (i + 1)), img_size // (2 ** (i + 1))]) if layer_norm else nn.Identity()
             ))
             in_channels = out_channels # update input channels for next block
             out_channels *= 2  # double output channels for next block 
@@ -30,6 +33,7 @@ class MyCNN(nn.Module):
             self.flatten_dim = in_channels * final_img_size ** 2     
 
             # Fully Connected Layer:
+            self.dropout = nn.Dropout(dropout_prob) if dropout_prob > 0 else nn.Identity()
             self.fc1 = nn.Linear(self.flatten_dim, num_of_classes)     
 
     def forward(self, x):
@@ -38,6 +42,7 @@ class MyCNN(nn.Module):
 
         x = x.flatten(1)
 
+        x = self.dropout(x) 
         x = self.fc1(x)
         return x
             
